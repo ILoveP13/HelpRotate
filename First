@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+import time
+import sys
+import numpy as np
+from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from PIL import Image
+from pynput import mouse
+
+# Flag to toggle rotation
+rotate_enabled = False
+
+def rotate_image(image):
+    img_array = np.array(image)
+    rotated_array = np.rot90(img_array)
+    return Image.fromarray(rotated_array)
+
+def toggle_rotation():
+    global rotate_enabled
+    rotate_enabled = not rotate_enabled
+    if rotate_enabled:
+        print("Rotation enabled")
+    else:
+        print("Rotation disabled")
+
+def on_mouse_button(button, pressed):
+    if button == mouse.Button.middle and pressed:
+        toggle_rotation()
+
+def handle_mouse_button():
+    listener = mouse.Listener(on_click=on_mouse_button)
+    listener.start()
+
+if len(sys.argv) < 2:
+    sys.exit("Requires an image argument")
+else:
+    image_file = sys.argv[1]
+
+# Configuration for the matrix
+options = RGBMatrixOptions()
+options.rows = 32
+options.chain_length = 1
+options.parallel = 1
+options.hardware_mapping = 'adafruit-hat'  # If you have an Adafruit HAT: 'adafruit-hat'
+options.brightness = 90
+
+matrix = RGBMatrix(options=options)
+
+# Load the image
+image = Image.open(image_file)
+
+handle_mouse_button()  # Start listening for mouse button events
+
+print("Press CTRL-C to stop.")
+while True:
+    if rotate_enabled:
+        rotated_image = rotate_image(image)
+        rotated_image.thumbnail((matrix.width, matrix.height))
+        matrix.SetImage(rotated_image.convert('RGB'))
+    else:
+        image.thumbnail((matrix.width, matrix.height))
+        matrix.SetImage(image.convert('RGB'))
+    time.sleep(0.05)
